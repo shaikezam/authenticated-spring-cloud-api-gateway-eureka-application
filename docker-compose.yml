@@ -1,0 +1,97 @@
+version: "3.9"
+services:
+  api-gateway:
+    container_name: api-gateway
+    build: api-gateway
+    ports:
+      - "8000:8000"
+    networks:
+      - product-network
+    restart: always
+
+  service-discovery:
+    container_name: service-discovery
+    build: service-discovery
+    ports:
+      - "8001:8001"
+    networks:
+      - product-network
+    restart: always
+
+  product-service:
+    container_name: product-service
+    build: product-service
+    ports:
+      - "8002:8002"
+    networks:
+      - product-network
+    restart: always
+    depends_on:
+      - db
+
+  order-service:
+    container_name: order-service
+    build: order-service
+    ports:
+      - "8003:8003"
+    depends_on:
+      - db
+    networks:
+      - product-network
+    restart: always
+
+  keycloak:
+    container_name: keycloak
+    image: jboss/keycloak:16.1.1
+    ports:
+      - "8005:8080"
+    depends_on:
+      - db
+    networks:
+      - product-network
+    volumes:
+      - ./keycloak:/opt/jboss/keycloak/imports
+    command:
+      - "-b 0.0.0.0 -Dkeycloak.import=/opt/jboss/keycloak/imports/realm-export.json"
+    restart: always
+    environment:
+      DB_VENDOR: mariadb
+      DB_ADDR: db
+      DB_PORT: "3306"
+      DB_DATABASE: keycloak
+      DB_USER: admin
+      DB_PASSWORD: admin
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: admin
+
+  db:
+    container_name: db
+    build: db
+    restart: always
+    environment:
+      MARIADB_ROOT_PASSWORD: admin
+      MARIADB_USER: admin
+      MARIADB_PASSWORD: admin
+      MARIADB_DATABASE: application
+    ports:
+      - "3306:3306"
+    networks:
+      - product-network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:5.2.1
+    container_name: phpmyadmin
+    restart: always
+    ports:
+      - "8004:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      MARIADB_ROOT_PASSWORD: admin
+    networks:
+      - product-network
+
+networks:
+  product-network:
+    external: false
+    name: product-network
